@@ -15,3 +15,13 @@ class Property(models.Model):
         
     def __str__(self):
         return f"{self.original_title} -> {self.rewritten_title}"
+    
+
+
+
+class Summary(models.Model):
+    hotel_id = models.IntegerField()
+    summary = models.TextField()
+
+    def __str__(self):
+        return f"Summary for Hotel ID: {self.hotel_id}"
