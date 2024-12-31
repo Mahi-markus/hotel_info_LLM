@@ -1,66 +1,84 @@
-# this is property_info/management/commands/rewrite_property_titles.py
-########################################
-
-
-import requests
-import json
+import google.generativeai as genai
 from django.core.management.base import BaseCommand
 from django.db import connections
-from properties.models import Property
+from time import sleep
+from django.core.management import CommandError
 
 class Command(BaseCommand):
-    help = "Rewrite property titles using Ollama model and save to ollama database"
+    help = 'Fetch hotel data from scraper_db and use Google Gemini API for title regeneration'
 
-    def handle(self, *args, **options):
-        # Connect to the ecommerce database and fetch property titles
-        with connections['scraper_db'].cursor() as cursor:
-            cursor.execute("SELECT id, title FROM hotels_info LIMIT 5")
-            properties = cursor.fetchall()
+    API_KEY = "AIzaSyCi3Jwp17IjkKPKZODiMkhTzoGFcq3tOeE"
 
-        for prop_id, title in properties:
-            try:
-                # Rewrite the title with Ollama
-                rewritten_title = self.rewrite_title_with_ollama(title)
-                
-                # Save to ollama database
-                Property.objects.create(
-                    original_id=prop_id,
-                    original_title=title,
-                    rewritten_title=rewritten_title
+    def setup_model(self, api_key):
+        """Configure and return the Gemini model"""
+        try:
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel('gemini-2.0-flash-exp')
+            return model
+        except Exception as e:
+            raise CommandError(f"Error setting up model: {str(e)}")
+
+    def generate_text(self, model, prompt, max_tokens, temperature):
+        """Generate text using the Gemini model"""
+        try:
+            response = model.generate_content(
+                prompt,
+                generation_config={
+                    'temperature': temperature,
+                    'top_p': 0.8,
+                    'top_k': 40,
+                    'max_output_tokens': max_tokens,
+                }
+            )
+            return response.text
+        except Exception as e:
+            raise CommandError(f"Error generating text: {str(e)}")
+
+    def handle(self, *args, **kwargs):
+        try:
+            # Connect to the scraper_db and fetch the hotel data
+            with connections['scraper_db'].cursor() as cursor:
+                cursor.execute("SELECT id, location, title FROM hotels_info limit 3;")
+                rows = cursor.fetchall()
+
+            # Hardcoded prompt for title regeneration
+            prompt_template = (
+                "Generate a catchy and SEO-friendly title for a hotel named '{property_title}' "
+                "located in {location}. Please make the title creative, engaging, and SEO-friendly, "
+                "considering the location and features of the property. "
+                "The title should be different from {property_title}. Only give me the new title. Don't give any options."
+            )
+
+            # Initialize the model
+            model = self.setup_model(self.API_KEY)
+
+            # Iterate through each row and send the property_title to API
+            for row in rows:
+                id = row[0]
+                location = row[1]
+                property_title = row[2]
+
+                # Prepare the prompt using the hardcoded template
+                prompt = prompt_template.format(
+                    property_title=property_title,
+                    location=location
                 )
 
+                # Generate text using the model
+                generated_title = self.generate_text(
+                    model,
+                    prompt,
+                    max_tokens=256,
+                    temperature=0.7
+                )
+
+                # Add a small delay between requests to avoid rate limiting
+                sleep(1)
+
+                # Output the hotel info with regenerated title
                 self.stdout.write(self.style.SUCCESS(
-                    f"Original: {title}\nRewritten: {rewritten_title}\n"
+                    f"ID: {id}, Original Title: {property_title}, Generated Title: {generated_title}, Location: {location}"
                 ))
-            except Exception as e:
-                self.stdout.write(self.style.ERROR(f"Error processing ID {prop_id}: {str(e)}"))
 
-    def rewrite_title_with_ollama(self, title):
-        prompt = (
-            "As an e-commerce expert, please change the following product title to make it unique"
-            "to be more engaging and SEO-friendly while maintaining accuracy: "
-            f"'{title}'"
-        )
-
-        response = requests.post(
-            "http://ollama:11434/api/generate",
-            json={
-                "model": "phi",  # Using mistral instead of phi
-                "prompt": prompt,
-                "system": "You are an e-commerce product title optimization expert. Respond with only the modified and changed title, no explanations."
-            }
-        )
-
-        if response.status_code == 200:
-            try:
-                response_data = json.loads(response.text)
-                return response_data.get('response', '').strip()
-            except json.JSONDecodeError:
-                return title
-        else:
-            self.stdout.write(self.style.WARNING(f"Error from Ollama: {response.text}"))
-            return title
-
-##########################################
-# Run with:
-# docker-compose exec django python manage.py rewrite_property_titles
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f"An error occurred: {str(e)}"))
