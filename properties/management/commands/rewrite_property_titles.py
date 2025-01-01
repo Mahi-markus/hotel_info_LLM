@@ -3,6 +3,7 @@ from django.core.management.base import BaseCommand
 from django.db import connections
 from time import sleep
 from django.core.management import CommandError
+from properties.models import Property
 
 class Command(BaseCommand):
     help = 'Fetch hotel data from scraper_db and use Google Gemini API for title regeneration'
@@ -38,7 +39,7 @@ class Command(BaseCommand):
         try:
             # Connect to the scraper_db and fetch the hotel data
             with connections['scraper_db'].cursor() as cursor:
-                cursor.execute("SELECT id, location, title FROM hotels_info limit 3;")
+                cursor.execute("SELECT id, location, title FROM hotels_info;")
                 rows = cursor.fetchall()
 
             # Hardcoded prompt for title regeneration
@@ -74,6 +75,15 @@ class Command(BaseCommand):
 
                 # Add a small delay between requests to avoid rate limiting
                 sleep(1)
+
+                # Save the regenerated title data to the database
+                summary_instance, created = Property.objects.update_or_create(
+                        original_id=id,
+                        original_title = property_title,
+                        rewritten_title = generated_title
+                         # Ensure correct column mapping
+                        
+                    )
 
                 # Output the hotel info with regenerated title
                 self.stdout.write(self.style.SUCCESS(

@@ -38,12 +38,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         try:
-            # Comment or remove this part that truncates the Summary table
-            # with connection.cursor() as cursor:
-            #     cursor.execute("TRUNCATE TABLE properties_summary RESTART IDENTITY CASCADE;")
-            
-            # self.stdout.write(self.style.SUCCESS("Summary table truncated and ID sequence reset."))
-
             # Connect to the trip_db and fetch the hotel data
             with connections['scraper_db'].cursor() as cursor:
                 cursor.execute("SELECT * FROM hotels_info;")
@@ -61,7 +55,7 @@ class Command(BaseCommand):
                 "- Room Type: {room_type}\n"
                 "Please make the summary creative, engaging, and SEO-friendly, "
                 "considering the other attributes listed above."
-                "Please Don't make the summary too large. Please Generare only one summary. It should be a summary rather than just informational text."
+                "Please Don't make the summary too large. Please Generate only one summary. It should be a summary rather than just informational text."
             )
 
             # Initialize the model
@@ -79,6 +73,13 @@ class Command(BaseCommand):
                     latitude = row[7] if len(row) > 7 and row[7] else None
                     longitude = row[8] if len(row) > 8 and row[8] else None
                     room_type = row[9] if len(row) > 9 and row[9] else None
+
+                    # Skip if the ID is null
+                    if id is None:
+                        self.stdout.write(self.style.WARNING(
+                            f"Skipping record due to null property_id for row: {row}"
+                        ))
+                        continue
 
                     # Prepare the prompt using the hardcoded template with the new data
                     prompt = prompt_template.format(
@@ -106,7 +107,7 @@ class Command(BaseCommand):
 
                     # Save the regenerated title data to the database
                     summary_instance, created = Summary.objects.update_or_create(
-                        id=id,
+                        hotel_id=id,  # Ensure correct column mapping
                         defaults={"summary": summary}
                     )
 

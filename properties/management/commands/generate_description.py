@@ -3,6 +3,7 @@ from django.core.management.base import BaseCommand
 from django.db import connections
 from time import sleep
 from django.core.management import CommandError
+from properties.models import Description
 
 class Command(BaseCommand):
     help = 'Fetch hotel data from trip_db and use Google Gemini API for title regeneration'
@@ -92,10 +93,23 @@ class Command(BaseCommand):
                 # Add a small delay between requests to avoid rate limiting
                 sleep(1)
 
-                # Output the hotel info with regenerated title
+                 # Save the regenerated title data to the database
+                summary_instance, created = Description.objects.update_or_create(
+                        hotel_id=id,  # Ensure correct column mapping
+                        defaults={"description": description}
+                    )
+
+                    # Output the hotel info with regenerated title
+                action = "Created" if created else "Updated"
                 self.stdout.write(self.style.SUCCESS(
-                    f"ID: {id}, Description: {description}, "
-                ))
+                        f"{action} description for Hotel ID: {id}, description: {description}"
+                    ))
+                
+
+                # Output the hotel info with regenerated title
+                # self.stdout.write(self.style.SUCCESS(
+                #     f"ID: {id}, Description: {description}, "
+                # ))
 
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"An error occurred: {str(e)}"))

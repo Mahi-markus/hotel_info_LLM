@@ -69,3 +69,9 @@ docker-compose exec ollama /bin/bash
 ollama list
 ollama pull llama2
 ollama pull phi
+
+
+
+superuser command:
+
+docker exec -it django python manage.py createsuperuser
