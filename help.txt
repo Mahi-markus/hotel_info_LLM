@@ -75,3 +75,8 @@ ollama pull phi
 superuser command:
 
 docker exec -it django python manage.py createsuperuser
+
+
+
+testing:
+docker exec -it django  python manage.py test properties

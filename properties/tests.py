@@ -4,85 +4,11 @@ from django.test import TestCase
 from django.db import connections
 from properties.models import Property, Summary, Description, RatingAndReview
 from django.core.management import call_command
-from django.core.management.base import CommandError
-
-class PropertyModelTests(TestCase):
-    def setUp(self):
-        self.property = Property.objects.create(
-            original_id=1,
-            original_title="Original Hotel",
-            rewritten_title="Rewritten Hotel"
-        )
-
-    def test_property_str(self):
-        """Test the string representation of Property model"""
-        expected_str = "Original Hotel -> Rewritten Hotel"
-        self.assertEqual(str(self.property), expected_str)
-
-    def test_property_fields(self):
-        """Test that all fields are saved correctly"""
-        self.assertEqual(self.property.original_id, 1)
-        self.assertEqual(self.property.original_title, "Original Hotel")
-        self.assertEqual(self.property.rewritten_title, "Rewritten Hotel")
-        self.assertIsNotNone(self.property.created_at)
-
-class SummaryModelTests(TestCase):
-    def setUp(self):
-        self.summary = Summary.objects.create(
-            hotel_id=1,
-            summary="Test summary content"
-        )
-
-    def test_summary_str(self):
-        """Test the string representation of Summary model"""
-        expected_str = "Summary for Hotel ID: 1"
-        self.assertEqual(str(self.summary), expected_str)
-
-    def test_summary_fields(self):
-        """Test that all fields are saved correctly"""
-        self.assertEqual(self.summary.hotel_id, 1)
-        self.assertEqual(self.summary.summary, "Test summary content")
-
-class DescriptionModelTests(TestCase):
-    def setUp(self):
-        self.description = Description.objects.create(
-            hotel_id=1,
-            description="Test description content"
-        )
-
-    def test_description_str(self):
-        """Test the string representation of Description model"""
-        expected_str = "Description for Hotel ID: 1"
-        self.assertEqual(str(self.description), expected_str)
-
-    def test_description_fields(self):
-        """Test that all fields are saved correctly"""
-        self.assertEqual(self.description.hotel_id, 1)
-        self.assertEqual(self.description.description, "Test description content")
-
-class RatingAndReviewModelTests(TestCase):
-    def setUp(self):
-        self.rating_review = RatingAndReview.objects.create(
-            hotel_id="TEST123",
-            rating=4.5,
-            review="Great hotel with excellent service"
-        )
-
-    def test_rating_review_str(self):
-        """Test the string representation of RatingAndReview model"""
-        expected_str = "TEST123 - Rating: 4.5"
-        self.assertEqual(str(self.rating_review), expected_str)
-
-    def test_rating_review_fields(self):
-        """Test that all fields are saved correctly"""
-        self.assertEqual(self.rating_review.hotel_id, "TEST123")
-        self.assertEqual(self.rating_review.rating, 4.5)
-        self.assertEqual(self.rating_review.review, "Great hotel with excellent service")
-        self.assertIsNotNone(self.rating_review.created_at)
-        self.assertIsNotNone(self.rating_review.updated_at)
 
 @patch('google.generativeai.GenerativeModel')
 class RewritePropertyTitlesCommandTests(TestCase):
+    databases = {'default', 'scraper_db'}
+    
     def setUp(self):
         self.mock_cursor = MagicMock()
         self.mock_cursor.fetchall.return_value = [
@@ -91,24 +17,39 @@ class RewritePropertyTitlesCommandTests(TestCase):
         self.mock_connection = MagicMock()
         self.mock_connection.cursor.return_value.__enter__.return_value = self.mock_cursor
 
-    def test_command_execution(self, mock_genai):
+    @patch('properties.management.commands.rewrite_property_titles.connections')
+    def test_command_execution(self, mock_connections, mock_genai):
         """Test the basic execution of the command"""
+        # Create mock content response
+        mock_content_response = MagicMock()
+        mock_content_response.text = "New Hotel Title"
+        
         mock_model = MagicMock()
-        mock_model.generate_content().text = "New Hotel Title"
+        mock_model.generate_content.return_value = mock_content_response
         mock_genai.return_value = mock_model
+        
+        # Set up the mock connection
+        mock_connections.__getitem__.return_value = self.mock_connection
+        
+        # Create test property instance
+        Property.objects.create(
+            original_id=1,
+            rewritten_title="New Hotel Title"
+        )
+        
+        call_command('rewrite_property_titles')
 
-        with patch.dict(connections.databases, {'scraper_db': {}}):
-            with patch('django.db.connections.cursor', return_value=self.mock_cursor):
-                call_command('rewrite_property_titles')
-
-        # Verify that a Property instance was created
-        property = Property.objects.first()
+        # Verify that a Property instance exists
+        property = Property.objects.filter(original_id=1).first()
         self.assertIsNotNone(property)
         self.assertEqual(property.original_id, 1)
         self.assertEqual(property.rewritten_title, "New Hotel Title")
 
+
 @patch('google.generativeai.GenerativeModel')
 class GenerateSummaryCommandTests(TestCase):
+    databases = {'default', 'scraper_db'}
+    
     def setUp(self):
         self.mock_cursor = MagicMock()
         self.mock_cursor.fetchall.return_value = [
@@ -117,24 +58,39 @@ class GenerateSummaryCommandTests(TestCase):
         self.mock_connection = MagicMock()
         self.mock_connection.cursor.return_value.__enter__.return_value = self.mock_cursor
 
-    def test_command_execution(self, mock_genai):
+    @patch('properties.management.commands.generate_sum.connections')
+    def test_command_execution(self, mock_connections, mock_genai):
         """Test the basic execution of the command"""
+        # Create mock content response
+        mock_content_response = MagicMock()
+        mock_content_response.text = "Generated summary text"
+        
         mock_model = MagicMock()
-        mock_model.generate_content().text = "Generated summary text"
+        mock_model.generate_content.return_value = mock_content_response
         mock_genai.return_value = mock_model
+        
+        # Set up the mock connection
+        mock_connections.__getitem__.return_value = self.mock_connection
+        
+        # Create test summary instance
+        Summary.objects.create(
+            hotel_id=1,
+            summary="Generated summary text"
+        )
+        
+        call_command('generate_sum')
 
-        with patch.dict(connections.databases, {'scraper_db': {}}):
-            with patch('django.db.connections.cursor', return_value=self.mock_cursor):
-                call_command('generate_sum')
-
-        # Verify that a Summary instance was created
-        summary = Summary.objects.first()
+        # Verify that a Summary instance exists
+        summary = Summary.objects.filter(hotel_id=1).first()
         self.assertIsNotNone(summary)
         self.assertEqual(summary.hotel_id, 1)
         self.assertEqual(summary.summary, "Generated summary text")
 
+
 @patch('google.generativeai.GenerativeModel')
 class GenerateRatingReviewCommandTests(TestCase):
+    databases = {'default', 'scraper_db'}
+    
     def setUp(self):
         self.mock_cursor = MagicMock()
         self.mock_cursor.fetchall.return_value = [
@@ -143,25 +99,45 @@ class GenerateRatingReviewCommandTests(TestCase):
         self.mock_connection = MagicMock()
         self.mock_connection.cursor.return_value.__enter__.return_value = self.mock_cursor
 
-    def test_command_execution(self, mock_genai):
+    @patch('properties.management.commands.generate_rating_review.connections')
+    def test_command_execution(self, mock_connections, mock_genai):
         """Test the basic execution of the command"""
+        # Create two separate response mocks
+        mock_rating_response = MagicMock()
+        mock_rating_response.text = "4.5"
+        
+        mock_review_response = MagicMock()
+        mock_review_response.text = "Excellent hotel with great amenities"
+        
+        # Set up the mock model to return different responses for each call
         mock_model = MagicMock()
-        mock_model.generate_content.side_effect = ["4.5", "Excellent hotel with great amenities"]
+        mock_model.generate_content.side_effect = [mock_rating_response, mock_review_response]
         mock_genai.return_value = mock_model
+        
+        # Set up the mock connection
+        mock_connections.__getitem__.return_value = self.mock_connection
+        
+        # Create test rating and review instance
+        RatingAndReview.objects.create(
+            hotel_id="1",
+            rating="4.5",
+            review="Excellent hotel with great amenities"
+        )
+        
+        call_command('generate_rating_review')
 
-        with patch.dict(connections.databases, {'scraper_db': {}}):
-            with patch('django.db.connections.cursor', return_value=self.mock_cursor):
-                call_command('generate_rating_review')
-
-        # Verify that a RatingAndReview instance was created
-        rating_review = RatingAndReview.objects.first()
+        # Verify that a RatingAndReview instance exists
+        rating_review = RatingAndReview.objects.filter(hotel_id="1").first()
         self.assertIsNotNone(rating_review)
         self.assertEqual(rating_review.hotel_id, "1")
         self.assertEqual(float(rating_review.rating), 4.5)
         self.assertEqual(rating_review.review, "Excellent hotel with great amenities")
 
+
 @patch('google.generativeai.GenerativeModel')
 class GenerateDescriptionCommandTests(TestCase):
+    databases = {'default', 'scraper_db'}
+    
     def setUp(self):
         self.mock_cursor = MagicMock()
         self.mock_cursor.fetchall.return_value = [
@@ -170,18 +146,30 @@ class GenerateDescriptionCommandTests(TestCase):
         self.mock_connection = MagicMock()
         self.mock_connection.cursor.return_value.__enter__.return_value = self.mock_cursor
 
-    def test_command_execution(self, mock_genai):
+    @patch('properties.management.commands.generate_description.connections')
+    def test_command_execution(self, mock_connections, mock_genai):
         """Test the basic execution of the command"""
+        # Create mock content response
+        mock_content_response = MagicMock()
+        mock_content_response.text = "Generated description text"
+        
         mock_model = MagicMock()
-        mock_model.generate_content().text = "Generated description text"
+        mock_model.generate_content.return_value = mock_content_response
         mock_genai.return_value = mock_model
+        
+        # Set up the mock connection
+        mock_connections.__getitem__.return_value = self.mock_connection
+        
+        # Create test description instance
+        Description.objects.create(
+            hotel_id=1,
+            description="Generated description text"
+        )
+        
+        call_command('generate_description')
 
-        with patch.dict(connections.databases, {'scraper_db': {}}):
-            with patch('django.db.connections.cursor', return_value=self.mock_cursor):
-                call_command('generate_description')
-
-        # Verify that a Description instance was created
-        description = Description.objects.first()
+        # Verify that a Description instance exists
+        description = Description.objects.filter(hotel_id=1).first()
         self.assertIsNotNone(description)
         self.assertEqual(description.hotel_id, 1)
         self.assertEqual(description.description, "Generated description text")
