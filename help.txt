@@ -80,3 +80,5 @@ docker exec -it django python manage.py createsuperuser
 
 testing:
 docker exec -it django  python manage.py test properties
+docker exec -it django coverage run manage.py test properties
+docker exec -it django coverage report
