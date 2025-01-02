@@ -8,7 +8,7 @@ This project is a Django CLI application designed to rewrite property informatio
 
 ## Features
 
-1. Rewrites property titles and descriptions using the Ollama model.
+1. Rewrites property titles and descriptions using the Gemini model.
 2. Stores the rewritten information in the `properties` table.
 3. Generates summaries for properties and saves them in the `summaries` table.
 4. Generates ratings and reviews for properties and saves them in the `ratings_reviews` table.
@@ -73,7 +73,7 @@ docker volume rm hotel_info_llm_postgres_data
 ```bash
 docker-compose up --build
 ```
-**incase if you see any error just press ctrl-c in order to stop the server and "docker-compose up" again**
+**incase if you see any error just press ctrl-c in order to stop the docker and "docker-compose up" again**
 ---
 
 ## Running the Application
@@ -99,6 +99,7 @@ docker exec -it django python manage.py generate_rating_review
 ```
 
 **if any of the above generation related commnad line doesnt work at the first try , just run that specific commandline again**
+
 **above commandlines can show "429 Resource error" but it wont cause problem to the overall functionality of the project** 
 
 ### Testing
