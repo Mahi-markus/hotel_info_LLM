@@ -99,6 +99,7 @@ docker exec -it django python manage.py generate_rating_review
 ```
 
 **if any of the above generation related commnad line doesnt work at the first try , just run that specific commandline again**
+**above commandlines can show "429 Resource error" but it wont cause problem to the overall functionality of the project** 
 
 ### Testing
 
@@ -144,6 +145,13 @@ Visit [http://localhost:8000/admin](http://localhost:8000/admin) and log in with
 
 ## Additional Information
 
+- to stop the docker and remove the container
+
+```bash
+ctrl-c   in that specific terminal where docker is runing  and 
+docker-compose down
+```
+
 ### Scraper Database
 
 This project integrates with a scraper database set up using a prior Scrapy project. Ensure that the Scrapy project is configured and running correctly.
@@ -176,7 +184,7 @@ This project integrates with a scraper database set up using a prior Scrapy proj
 
 - **Backend Framework**: Django
 - **Database**: PostgreSQL
-- **LLM Integration**: Ollama model
+- **LLM Integration**: Gemini model
 - **Testing**: Django Test Framework, Coverage
 - **Containerization**: Docker, Docker Compose
 
