@@ -63,7 +63,7 @@ Open another terminal inside hotel_info_LLM directory and Run the following comm
 
 ```bash
 docker volume ls
-if "rm hotel_info_llm_postgres_data" exists then
+if "rm hotel_info_llm_postgres_data" exists then 
 docker volume rm hotel_info_llm_postgres_data
 
 ```
@@ -73,7 +73,7 @@ docker volume rm hotel_info_llm_postgres_data
 ```bash
 docker-compose up --build
 ```
-
+**incase if you see any error just press ctrl-c in order to stop the server and "docker-compose up" again**
 ---
 
 ## Running the Application
@@ -93,7 +93,7 @@ Use the CLI command to rewrite property titles and descriptions,Review,Rating an
 
 ```bash
 docker exec -it django python manage.py generate_description
-docker exec -it django python manage.py generate_summary
+docker exec -it django python manage.py generate_sum
 docker exec -it django python manage.py rewrite_property_titles
 docker exec -it django python manage.py generate_rating_review
 ```
