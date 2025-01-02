@@ -26,7 +26,7 @@ This project is a Django CLI application designed to rewrite property informatio
 
 ## Installation
 
-- **Clone the previous scrapy project and run that project as per the readme instructions given there.**
+- **First of all, Clone the previous scrapy project and run that project as per the readme instructions given there.**
   heres the clone link: https://github.com/Mahi-markus/Scrapy_python
 
 ### Create Virtual Environment
