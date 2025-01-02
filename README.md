@@ -140,7 +140,8 @@ docker exec -it django python manage.py createsuperuser
 
 ### Access Admin Panel
 
-Visit [http://localhost:8000/admin](http://localhost:8000/admin) and log in with the credentials above.
+- Visit [http://localhost:8000/admin](http://localhost:8000/admin) and log in with the credentials above.
+- After login you see the tables and generated data there
 
 ---
 
